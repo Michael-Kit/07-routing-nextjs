@@ -1,62 +1,50 @@
 'use client';
 
-import Link from 'next/link';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { deleteNote } from '@/lib/api';
-import type { Note } from '@/types/note';
 import css from './NoteList.module.css';
+import toast from 'react-hot-toast';
+import { deleteNote } from '@/lib/api';
+import { Note } from '@/types/note';
+import Link from 'next/link';
 
 interface NoteListProps {
   notes: Note[];
 }
 
-const NoteList = ({ notes }: NoteListProps) => {
+export default function NoteList({ notes }: NoteListProps) {
   const queryClient = useQueryClient();
 
-  const deleteNoteMutation = useMutation<Note, Error, string>({
-    mutationFn: deleteNote,
-    onSuccess: () => {
+  const deleteNoteMutate = useMutation({
+    mutationFn: (id: string) => deleteNote(id),
+    onSuccess() {
       queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+    onError(error) {
+      toast.error(error.message);
     },
   });
 
-  const handleDelete = (noteId: string) => {
-    deleteNoteMutation.mutate(noteId);
-  };
-
-  if (notes.length === 0) {
-    return (
-      <div className={css.emptyState}>
-        <h3>No notes found</h3>
-        <p>Create your first note to get started!</p>
-      </div>
-    );
+  function handleDeleteNote(id: string) {
+    deleteNoteMutate.mutate(id);
   }
 
   return (
     <ul className={css.list}>
       {notes.map((note) => {
-        const isDeleting =
-          deleteNoteMutation.isPending &&
-          deleteNoteMutation.variables === note.id;
-
         return (
-          <li key={note.id} className={css.listItem}>
+          <li className={css.listItem} key={note.id}>
             <h2 className={css.title}>{note.title}</h2>
             <p className={css.content}>{note.content}</p>
             <div className={css.footer}>
               <span className={css.tag}>{note.tag}</span>
-
-              <Link href={`/notes/${note.id}`} className={css.link}>
+              <Link className={css.link} href={`/notes/${note.id}`}>
                 View details
               </Link>
               <button
+                onClick={() => handleDeleteNote(note.id)}
                 className={css.button}
-                onClick={() => handleDelete(note.id)}
-                disabled={isDeleting}
-                aria-label={`Delete note titled ${note.title}`}
               >
-                {isDeleting ? 'Deleting...' : 'Delete'}
+                Delete
               </button>
             </div>
           </li>
@@ -64,6 +52,4 @@ const NoteList = ({ notes }: NoteListProps) => {
       })}
     </ul>
   );
-};
-
-export default NoteList;
+}

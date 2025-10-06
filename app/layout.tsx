@@ -1,12 +1,13 @@
 // app/layout.tsx
-
+import 'modern-normalize';
+import './globals.css';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
-import './globals.css';
-
+import TanStackProvider from '@/components/TanStackProvider/TanStackProvider';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
-import TanStackProvider from '@/components/TanStackProvider/TanStackProvider';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { ReactNode } from 'react';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -19,25 +20,29 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'NoteHub',
-  description:
-    'A simple and efficient application for managing personal notes.',
+  title: 'Note Hub',
+  description: 'Created by GoIT',
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+  modal,
+}: Readonly<{
+  children: ReactNode;
+  modal: ReactNode;
+}>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <TanStackProvider>
           <Header />
-          <main>{children}</main>
+
+          {children}
+          {modal}
+
           <Footer />
+          <ReactQueryDevtools initialIsOpen={false} />
         </TanStackProvider>
-        <div id="modal-root" />
       </body>
     </html>
   );

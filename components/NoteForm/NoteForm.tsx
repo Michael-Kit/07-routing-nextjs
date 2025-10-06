@@ -1,56 +1,68 @@
 'use client';
 
-import { Formik, Form, Field, ErrorMessage } from 'formik';
+import { ErrorMessage, Field, Form, Formik, type FormikHelpers } from 'formik';
+import css from './NoteForm.module.css';
 import * as Yup from 'yup';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { createNote } from '@/lib/api';
-import type { NoteFormValues } from '@/types/note'; // 🔄 заміна CreateNoteParams
-import css from './NoteForm.module.css';
+import { NoteFormData } from '@/types/note';
 
 interface NoteFormProps {
   onClose: () => void;
 }
 
-const validationSchema = Yup.object().shape({
-  title: Yup.string().min(3).max(50).required('Title is required'),
-  content: Yup.string().max(500, 'Max 500 characters'),
-  tag: Yup.string()
-    .oneOf(['Todo', 'Work', 'Personal', 'Meeting', 'Shopping'])
-    .required('Tag is required'),
-});
-
-const initialValues: NoteFormValues = {
+const defaultValues: NoteFormData = {
   title: '',
   content: '',
   tag: 'Todo',
 };
 
-const NoteForm = ({ onClose }: NoteFormProps) => {
+const OrderSchema = Yup.object().shape({
+  title: Yup.string()
+    .min(3, 'Title must be at least 3 characters')
+    .max(50, 'Title must be at most 50 characters')
+    .required('Title is required'),
+  content: Yup.string().max(500, 'Content must be at most 500 characters'),
+  tag: Yup.string()
+    .oneOf(['Todo', 'Work', 'Personal', 'Meeting', 'Shopping'])
+    .required('Tag is required'),
+});
+
+export default function NoteForm({ onClose }: NoteFormProps) {
   const queryClient = useQueryClient();
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
+  const createNoteMutate = useMutation({
+    mutationFn: (data: NoteFormData) => createNote(data),
+    onSuccess() {
       queryClient.invalidateQueries({ queryKey: ['notes'] });
       onClose();
     },
+    onError(error) {
+      toast.error(error.message);
+    },
   });
 
-  const handleSubmit = (values: NoteFormValues) => {
-    mutate(values);
-  };
+  function handleSubmit(
+    values: NoteFormData,
+    formikHelpers: FormikHelpers<NoteFormData>,
+  ) {
+    createNoteMutate.mutate(values, {
+      onSuccess: () => formikHelpers.resetForm(),
+    });
+  }
 
   return (
     <Formik
-      initialValues={initialValues}
-      validationSchema={validationSchema}
+      initialValues={defaultValues}
       onSubmit={handleSubmit}
+      validationSchema={OrderSchema}
     >
-      <Form className={css.form} aria-label="Create new note form">
+      <Form className={css.form}>
         <div className={css.formGroup}>
           <label htmlFor="title">Title</label>
-          <Field id="title" name="title" type="text" className={css.input} />
-          <ErrorMessage name="title" component="span" className={css.error} />
+          <Field id="title" type="text" name="title" className={css.input} />
+          <ErrorMessage component="span" name="title" className={css.error} />
         </div>
 
         <div className={css.formGroup}>
@@ -62,7 +74,7 @@ const NoteForm = ({ onClose }: NoteFormProps) => {
             rows={8}
             className={css.textarea}
           />
-          <ErrorMessage name="content" component="span" className={css.error} />
+          <ErrorMessage component="span" name="content" className={css.error} />
         </div>
 
         <div className={css.formGroup}>
@@ -74,30 +86,18 @@ const NoteForm = ({ onClose }: NoteFormProps) => {
             <option value="Meeting">Meeting</option>
             <option value="Shopping">Shopping</option>
           </Field>
-          <ErrorMessage name="tag" component="span" className={css.error} />
+          <ErrorMessage component="span" name="tag" className={css.error} />
         </div>
 
         <div className={css.actions}>
-          <button
-            type="button"
-            className={css.cancelButton}
-            onClick={onClose}
-            aria-label="Cancel note creation"
-          >
+          <button onClick={onClose} type="button" className={css.cancelButton}>
             Cancel
           </button>
-          <button
-            type="submit"
-            className={css.submitButton}
-            disabled={isPending}
-            aria-label="Submit new note"
-          >
-            {isPending ? 'Creating...' : 'Create note'}
+          <button type="submit" className={css.submitButton} disabled={false}>
+            Create note
           </button>
         </div>
       </Form>
     </Formik>
   );
-};
-
-export default NoteForm;
+}

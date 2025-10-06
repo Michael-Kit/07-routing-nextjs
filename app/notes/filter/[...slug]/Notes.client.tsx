@@ -1,6 +1,6 @@
 'use client';
 
-import ErrorMessage from '@/components/Error/ErrorMessage';
+import ErrorMessage from '@/components/ErrorMessage/ErrorMessage';
 import Modal from '@/components/Modal/Modal';
 import NoteForm from '@/components/NoteForm/NoteForm';
 import NoteList from '@/components/NoteList/NoteList';
@@ -8,29 +8,23 @@ import Pagination from '@/components/Pagination/Pagination';
 import SearchBox from '@/components/SearchBox/SearchBox';
 import { fetchNotes } from '@/lib/api';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { useDebouncedCallback } from 'use-debounce';
 import css from './NotesPage.module.css';
 
-export default function NotesClient() {
-  const [searchInput, setSearchInput] = useState('');
+interface NotesClientProps {
+  category?: string;
+}
+
+export default function NotesClient({ category }: NotesClientProps) {
   const [topic, setTopic] = useState('');
   const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Debounce: оновлює topic через 500мс після останнього введення
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setTopic(searchInput);
-      setPage(1);
-    }, 500);
-
-    return () => clearTimeout(handler);
-  }, [searchInput]);
-
   const { data, isError, isSuccess } = useQuery({
-    queryKey: ['notes', topic, page],
-    queryFn: () => fetchNotes(topic, page),
+    queryKey: ['notes', topic, page, category],
+    queryFn: () => fetchNotes(topic, page, category),
     placeholderData: keepPreviousData,
     refetchOnMount: false,
   });
@@ -45,15 +39,20 @@ export default function NotesClient() {
     setIsModalOpen(false);
   }
 
+  const updateSearchWord = useDebouncedCallback((searchWord: string) => {
+    setTopic(searchWord);
+    setPage(1);
+  }, 500);
+
   return (
     <div className={css.app}>
       <header className={css.toolbar}>
-        <SearchBox value={searchInput} onChange={setSearchInput} />
+        <SearchBox onChange={updateSearchWord} />
         {isSuccess && totalPages > 1 && (
           <Pagination
             totalPages={totalPages}
             page={page}
-            onPageChange={setPage}
+            updatePage={setPage}
           />
         )}
         <button className={css.button} onClick={openModal}>
